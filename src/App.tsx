@@ -1,5 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Code2, BookOpen, Trophy, Timer, ChevronRight, X, CheckCircle2, XCircle, Zap, Layers, Globe, Palette, RotateCcw, ArrowRight } from 'lucide-react'
+import { useState, useCallback } from 'react'
+import { Code2, BookOpen, Trophy, Timer, ChevronRight, CheckCircle2, XCircle, Zap, Layers, Globe, Palette, RotateCcw, ArrowRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 import './App.css'
 
 interface Question {
@@ -637,23 +643,17 @@ const categories: Category[] = [
 ]
 
 function App() {
+  const [dialogOpen, setDialogOpen] = useState(false)
   const [activeQuiz, setActiveQuiz] = useState<Category | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showExplanation, setShowExplanation] = useState(false)
   const [score, setScore] = useState(0)
   const [quizComplete, setQuizComplete] = useState(false)
-  const [answeredQuestions, setAnsweredQuestions] = useState<boolean[]>([])
+  const [answeredQuestions, setAnsweredQuestions] = useState<Array<'correct' | 'incorrect' | null>>([])
   const [totalQuizzesCompleted, setTotalQuizzesCompleted] = useState(0)
   const [totalCorrect, setTotalCorrect] = useState(0)
   const [totalAnswered, setTotalAnswered] = useState(0)
-  const [animateIn, setAnimateIn] = useState(false)
-
-  useEffect(() => {
-    if (activeQuiz) {
-      setAnimateIn(true)
-    }
-  }, [activeQuiz])
 
   const startQuiz = (category: Category) => {
     setActiveQuiz(category)
@@ -662,7 +662,8 @@ function App() {
     setShowExplanation(false)
     setScore(0)
     setQuizComplete(false)
-    setAnsweredQuestions(new Array(category.questions.length).fill(false))
+    setAnsweredQuestions(new Array(category.questions.length).fill(null))
+    setDialogOpen(true)
   }
 
   const handleAnswer = (answerIndex: number) => {
@@ -677,7 +678,7 @@ function App() {
     setTotalAnswered(prev => prev + 1)
     setAnsweredQuestions(prev => {
       const updated = [...prev]
-      updated[currentQuestion] = true
+      updated[currentQuestion] = isCorrect ? 'correct' : 'incorrect'
       return updated
     })
   }
@@ -694,15 +695,7 @@ function App() {
   }
 
   const closeQuiz = useCallback(() => {
-    setAnimateIn(false)
-    setTimeout(() => {
-      setActiveQuiz(null)
-      setCurrentQuestion(0)
-      setSelectedAnswer(null)
-      setShowExplanation(false)
-      setScore(0)
-      setQuizComplete(false)
-    }, 200)
+    setDialogOpen(false)
   }, [])
 
   const getScoreMessage = () => {
@@ -722,6 +715,19 @@ function App() {
     return 'text-red-500'
   }
 
+  const getProgressValue = () => {
+    if (!activeQuiz) return 0
+    return ((currentQuestion + (selectedAnswer !== null ? 1 : 0)) / activeQuiz.questions.length) * 100
+  }
+
+  const getScoreBarColor = () => {
+    if (!activeQuiz) return 'bg-green-500'
+    const percentage = (score / activeQuiz.questions.length) * 100
+    if (percentage >= 75) return 'bg-gradient-to-r from-green-500 to-emerald-400'
+    if (percentage >= 50) return 'bg-gradient-to-r from-yellow-500 to-amber-400'
+    return 'bg-gradient-to-r from-red-500 to-rose-400'
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
@@ -738,15 +744,15 @@ function App() {
               </div>
             </div>
             {totalAnswered > 0 && (
-              <div className="hidden sm:flex items-center gap-6 text-sm">
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Trophy className="w-4 h-4 text-amber-400" />
-                  <span>{totalQuizzesCompleted} quiz{totalQuizzesCompleted !== 1 ? 'zes' : ''}</span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-300">
-                  <CheckCircle2 className="w-4 h-4 text-green-400" />
-                  <span>{totalCorrect}/{totalAnswered} correct</span>
-                </div>
+              <div className="hidden sm:flex items-center gap-3">
+                <Badge variant="secondary" className="bg-slate-700/50 text-slate-300 border-slate-600 gap-1.5">
+                  <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  {totalQuizzesCompleted} quiz{totalQuizzesCompleted !== 1 ? 'zes' : ''}
+                </Badge>
+                <Badge variant="secondary" className="bg-slate-700/50 text-slate-300 border-slate-600 gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                  {totalCorrect}/{totalAnswered} correct
+                </Badge>
               </div>
             )}
           </div>
@@ -758,10 +764,10 @@ function App() {
         <div className="absolute inset-0 bg-gradient-to-b from-violet-600/10 to-transparent pointer-events-none" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
           <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 rounded-full px-4 py-1.5 mb-6">
+            <Badge variant="outline" className="bg-violet-500/10 border-violet-500/20 text-violet-300 mb-6 gap-2 px-4 py-1.5 rounded-full">
               <Zap className="w-4 h-4 text-violet-400" />
-              <span className="text-sm text-violet-300 font-medium">Interactive Quiz Platform</span>
-            </div>
+              Interactive Quiz Platform
+            </Badge>
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-6 leading-tight">
               Ace Your Next{' '}
               <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
@@ -797,240 +803,246 @@ function App() {
         <h3 className="text-2xl font-bold text-white mb-8 text-center">Choose a Topic</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {categories.map(category => (
-            <button
+            <Card
               key={category.id}
+              className={cn(
+                'group relative overflow-hidden cursor-pointer bg-slate-800/50 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-violet-500/10 hover:border-violet-500/50',
+                category.borderColor
+              )}
               onClick={() => startQuiz(category)}
-              className={`group relative overflow-hidden rounded-2xl border ${category.borderColor} bg-slate-800/50 backdrop-blur-sm p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-violet-500/10 hover:border-violet-500/50`}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-violet-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="relative">
-                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl ${category.bgColor} ${category.color} mb-4 transition-transform duration-300 group-hover:scale-110`}>
+              <CardContent className="relative p-6">
+                <div className={cn(
+                  'inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4 transition-transform duration-300 group-hover:scale-110',
+                  category.bgColor, category.color
+                )}>
                   {category.icon}
                 </div>
                 <h4 className="text-lg font-semibold text-white mb-1">{category.name}</h4>
                 <p className="text-sm text-slate-400 mb-4">{category.description}</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">{category.questions.length} questions</span>
+                  <Badge variant="secondary" className="bg-slate-700/50 text-slate-500 border-slate-600 text-xs">
+                    {category.questions.length} questions
+                  </Badge>
                   <div className="flex items-center gap-1 text-violet-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <span>Start Quiz</span>
                     <ChevronRight className="w-4 h-4" />
                   </div>
                 </div>
-              </div>
-            </button>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </section>
 
-      {/* Quiz Popup Modal */}
-      {activeQuiz && (
-        <div
-          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ${animateIn ? 'bg-black/60 backdrop-blur-sm' : 'bg-black/0'}`}
-          onClick={(e) => { if (e.target === e.currentTarget) closeQuiz() }}
-        >
-          <div className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl shadow-black/50 transition-all duration-200 ${animateIn ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-slate-800/95 backdrop-blur-sm border-b border-slate-700 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
-              <div className="flex items-center gap-3">
-                <div className={`inline-flex items-center justify-center w-10 h-10 rounded-lg ${activeQuiz.bgColor} ${activeQuiz.color}`}>
-                  {activeQuiz.icon}
+      {/* Quiz Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeQuiz() }}>
+        <DialogContent className="max-w-2xl max-h-screen overflow-y-auto bg-slate-800 border-slate-700 p-0 gap-0 sm:rounded-2xl">
+          {activeQuiz && (
+            <>
+              <DialogHeader className="sticky top-0 bg-slate-800/95 backdrop-blur-sm border-b border-slate-700 px-6 py-4 z-10">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    'inline-flex items-center justify-center w-10 h-10 rounded-lg',
+                    activeQuiz.bgColor, activeQuiz.color
+                  )}>
+                    {activeQuiz.icon}
+                  </div>
+                  <div>
+                    <DialogTitle className="text-lg font-semibold text-white">
+                      {activeQuiz.name} Quiz
+                    </DialogTitle>
+                    {!quizComplete ? (
+                      <DialogDescription className="text-xs text-slate-400">
+                        Question {currentQuestion + 1} of {activeQuiz.questions.length}
+                      </DialogDescription>
+                    ) : (
+                      <DialogDescription className="sr-only">
+                        Quiz results
+                      </DialogDescription>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">{activeQuiz.name} Quiz</h3>
-                  {!quizComplete && (
-                    <p className="text-xs text-slate-400">Question {currentQuestion + 1} of {activeQuiz.questions.length}</p>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={closeQuiz}
-                className="p-2 rounded-lg hover:bg-slate-700 transition-colors text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+              </DialogHeader>
 
-            {/* Progress Bar */}
-            {!quizComplete && (
-              <div className="px-6 pt-4">
-                <div className="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${((currentQuestion + (selectedAnswer !== null ? 1 : 0)) / activeQuiz.questions.length) * 100}%` }}
+              {/* Progress Bar */}
+              {!quizComplete && (
+                <div className="px-6 pt-4">
+                  <Progress
+                    value={getProgressValue()}
+                    className="h-2 bg-slate-700"
+                    indicatorClassName="bg-gradient-to-r from-violet-500 to-indigo-500"
                   />
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Quiz Content */}
-            <div className="p-6">
-              {!quizComplete ? (
-                <div>
-                  {/* Question */}
-                  <h4 className="text-xl font-semibold text-white mb-6 leading-relaxed">
-                    {activeQuiz.questions[currentQuestion].question}
-                  </h4>
+              {/* Quiz Content */}
+              <div className="p-6">
+                {!quizComplete ? (
+                  <div>
+                    <h4 className="text-xl font-semibold text-white mb-6 leading-relaxed">
+                      {activeQuiz.questions[currentQuestion].question}
+                    </h4>
 
-                  {/* Options */}
-                  <div className="space-y-3 mb-6">
-                    {activeQuiz.questions[currentQuestion].options.map((option, index) => {
-                      const isSelected = selectedAnswer === index
-                      const isCorrect = index === activeQuiz.questions[currentQuestion].correctAnswer
-                      const showResult = selectedAnswer !== null
+                    <div className="space-y-3 mb-6">
+                      {activeQuiz.questions[currentQuestion].options.map((option, index) => {
+                        const isSelected = selectedAnswer === index
+                        const isCorrect = index === activeQuiz.questions[currentQuestion].correctAnswer
+                        const showResult = selectedAnswer !== null
 
-                      let optionClasses = 'w-full text-left p-4 rounded-xl border transition-all duration-200 flex items-start gap-3'
+                        return (
+                          <Button
+                            key={index}
+                            variant="outline"
+                            onClick={() => handleAnswer(index)}
+                            disabled={selectedAnswer !== null}
+                            className={cn(
+                              'w-full text-left p-4 h-auto rounded-xl border transition-all duration-200 flex items-start gap-3 justify-start whitespace-normal',
+                              showResult
+                                ? isCorrect
+                                  ? 'border-green-500/50 bg-green-500/10 text-green-300 hover:bg-green-500/10 hover:text-green-300'
+                                  : isSelected
+                                    ? 'border-red-500/50 bg-red-500/10 text-red-300 hover:bg-red-500/10 hover:text-red-300'
+                                    : 'border-slate-700 bg-slate-800/50 text-slate-500 hover:bg-slate-800/50 hover:text-slate-500'
+                                : 'border-slate-700 bg-slate-800/50 text-slate-300 hover:border-violet-500/50 hover:bg-violet-500/5'
+                            )}
+                          >
+                            <span className={cn(
+                              'inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm font-medium shrink-0 mt-0.5',
+                              showResult
+                                ? isCorrect
+                                  ? 'bg-green-500/20 text-green-400'
+                                  : isSelected
+                                    ? 'bg-red-500/20 text-red-400'
+                                    : 'bg-slate-700 text-slate-500'
+                                : 'bg-slate-700 text-slate-400'
+                            )}>
+                              {String.fromCharCode(65 + index)}
+                            </span>
+                            <span className="text-sm leading-relaxed">{option}</span>
+                            {showResult && isCorrect && (
+                              <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0 mt-0.5 ml-auto" />
+                            )}
+                            {showResult && isSelected && !isCorrect && (
+                              <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5 ml-auto" />
+                            )}
+                          </Button>
+                        )
+                      })}
+                    </div>
 
-                      if (showResult) {
-                        if (isCorrect) {
-                          optionClasses += ' border-green-500/50 bg-green-500/10 text-green-300'
-                        } else if (isSelected && !isCorrect) {
-                          optionClasses += ' border-red-500/50 bg-red-500/10 text-red-300'
-                        } else {
-                          optionClasses += ' border-slate-700 bg-slate-800/50 text-slate-500'
-                        }
-                      } else {
-                        optionClasses += ' border-slate-700 bg-slate-800/50 text-slate-300 hover:border-violet-500/50 hover:bg-violet-500/5 cursor-pointer'
-                      }
+                    {showExplanation && (
+                      <Card className="bg-slate-700/50 border-slate-600 mb-6">
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-2">
+                            <BookOpen className="w-5 h-5 text-violet-400 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-violet-300 mb-1">Explanation</p>
+                              <p className="text-sm text-slate-300 leading-relaxed">
+                                {activeQuiz.questions[currentQuestion].explanation}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
 
-                      return (
-                        <button
-                          key={index}
-                          onClick={() => handleAnswer(index)}
-                          disabled={selectedAnswer !== null}
-                          className={optionClasses}
-                        >
-                          <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm font-medium shrink-0 mt-0.5 ${
-                            showResult
-                              ? isCorrect
-                                ? 'bg-green-500/20 text-green-400'
-                                : isSelected
-                                  ? 'bg-red-500/20 text-red-400'
-                                  : 'bg-slate-700 text-slate-500'
-                              : 'bg-slate-700 text-slate-400'
-                          }`}>
-                            {String.fromCharCode(65 + index)}
-                          </span>
-                          <span className="text-sm leading-relaxed">{option}</span>
-                          {showResult && isCorrect && (
-                            <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0 mt-0.5 ml-auto" />
-                          )}
-                          {showResult && isSelected && !isCorrect && (
-                            <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5 ml-auto" />
-                          )}
-                        </button>
-                      )
-                    })}
+                    {selectedAnswer !== null && (
+                      <Button
+                        onClick={nextQuestion}
+                        className="w-full py-3 px-6 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-medium rounded-xl shadow-lg shadow-violet-500/25"
+                        size="lg"
+                      >
+                        {currentQuestion < activeQuiz.questions.length - 1 ? (
+                          <>Next Question <ArrowRight className="w-4 h-4" /></>
+                        ) : (
+                          <>See Results <Trophy className="w-4 h-4" /></>
+                        )}
+                      </Button>
+                    )}
                   </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-violet-500/20 to-indigo-500/20 border border-violet-500/30 mb-6">
+                      <Trophy className={cn('w-10 h-10', getScoreColor())} />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Quiz Complete!</h3>
+                    <p className="text-slate-400 mb-6">{getScoreMessage()}</p>
 
-                  {/* Explanation */}
-                  {showExplanation && (
-                    <div className="bg-slate-700/50 border border-slate-600 rounded-xl p-4 mb-6">
-                      <div className="flex items-start gap-2">
-                        <BookOpen className="w-5 h-5 text-violet-400 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-violet-300 mb-1">Explanation</p>
-                          <p className="text-sm text-slate-300 leading-relaxed">
-                            {activeQuiz.questions[currentQuestion].explanation}
-                          </p>
+                    <Card className="bg-slate-700/50 border-slate-600 mb-8 max-w-xs mx-auto">
+                      <CardContent className="p-6">
+                        <div className={cn('text-5xl font-extrabold mb-2', getScoreColor())}>
+                          {score}/{activeQuiz.questions.length}
                         </div>
+                        <p className="text-sm text-slate-400">
+                          {Math.round((score / activeQuiz.questions.length) * 100)}% correct
+                        </p>
+                        <div className="mt-4">
+                          <Progress
+                            value={(score / activeQuiz.questions.length) * 100}
+                            className="h-3 bg-slate-600"
+                            indicatorClassName={getScoreBarColor()}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <div className="text-left mb-8">
+                      <h4 className="text-sm font-medium text-slate-400 mb-3 uppercase tracking-wider">Question Summary</h4>
+                      <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                        {answeredQuestions.map((result, index) => (
+                          <div
+                            key={index}
+                            className={cn(
+                              'w-full aspect-square rounded-lg flex items-center justify-center text-sm font-medium',
+                              result === 'correct'
+                                ? 'bg-green-500/20 text-green-400'
+                                : result === 'incorrect'
+                                  ? 'bg-red-500/20 text-red-400'
+                                  : 'bg-slate-700/30 text-slate-600'
+                            )}
+                          >
+                            {index + 1}
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  )}
 
-                  {/* Next Button */}
-                  {selectedAnswer !== null && (
-                    <button
-                      onClick={nextQuestion}
-                      className="w-full py-3 px-6 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25"
-                    >
-                      {currentQuestion < activeQuiz.questions.length - 1 ? (
-                        <>Next Question <ArrowRight className="w-4 h-4" /></>
-                      ) : (
-                        <>See Results <Trophy className="w-4 h-4" /></>
-                      )}
-                    </button>
-                  )}
-                </div>
-              ) : (
-                /* Results Screen */
-                <div className="text-center py-6">
-                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-violet-500/20 to-indigo-500/20 border border-violet-500/30 mb-6">
-                    <Trophy className={`w-10 h-10 ${getScoreColor()}`} />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">Quiz Complete!</h3>
-                  <p className="text-slate-400 mb-6">{getScoreMessage()}</p>
-
-                  <div className="bg-slate-700/50 rounded-2xl p-6 mb-8 max-w-xs mx-auto">
-                    <div className={`text-5xl font-extrabold ${getScoreColor()} mb-2`}>
-                      {score}/{activeQuiz.questions.length}
-                    </div>
-                    <p className="text-sm text-slate-400">
-                      {Math.round((score / activeQuiz.questions.length) * 100)}% correct
-                    </p>
-                    <div className="mt-4 w-full bg-slate-600 rounded-full h-3 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-1000 ${
-                          (score / activeQuiz.questions.length) >= 0.75
-                            ? 'bg-gradient-to-r from-green-500 to-emerald-400'
-                            : (score / activeQuiz.questions.length) >= 0.5
-                              ? 'bg-gradient-to-r from-yellow-500 to-amber-400'
-                              : 'bg-gradient-to-r from-red-500 to-rose-400'
-                        }`}
-                        style={{ width: `${(score / activeQuiz.questions.length) * 100}%` }}
-                      />
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={() => startQuiz(activeQuiz)}
+                        className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-violet-500/25"
+                        size="lg"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        Retry Quiz
+                      </Button>
+                      <Button
+                        onClick={closeQuiz}
+                        variant="secondary"
+                        className="flex-1 bg-slate-700 hover:bg-slate-600 text-white"
+                        size="lg"
+                      >
+                        Back to Topics
+                      </Button>
                     </div>
                   </div>
+                )}
+              </div>
 
-                  {/* Question Review */}
-                  <div className="text-left mb-8">
-                    <h4 className="text-sm font-medium text-slate-400 mb-3 uppercase tracking-wider">Question Summary</h4>
-                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-                      {answeredQuestions.map((_, index) => (
-                        <div
-                          key={index}
-                          className={`w-full aspect-square rounded-lg flex items-center justify-center text-sm font-medium ${
-                            answeredQuestions[index]
-                              ? 'bg-slate-700/50 text-slate-400'
-                              : 'bg-slate-700/30 text-slate-600'
-                          }`}
-                        >
-                          {index + 1}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => startQuiz(activeQuiz)}
-                      className="flex-1 py-3 px-6 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                      Retry Quiz
-                    </button>
-                    <button
-                      onClick={closeQuiz}
-                      className="flex-1 py-3 px-6 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-xl transition-all duration-200"
-                    >
-                      Back to Topics
-                    </button>
+              {!quizComplete && (
+                <div className="px-6 pb-4">
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span>Score: {score}/{currentQuestion + (selectedAnswer !== null ? 1 : 0)}</span>
+                    <span>{activeQuiz.questions.length - currentQuestion - (selectedAnswer !== null ? 1 : 0)} remaining</span>
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* Score tracker in modal */}
-            {!quizComplete && (
-              <div className="px-6 pb-4">
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span>Score: {score}/{currentQuestion + (selectedAnswer !== null ? 1 : 0)}</span>
-                  <span>{activeQuiz.questions.length - currentQuestion - (selectedAnswer !== null ? 1 : 0)} remaining</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <footer className="border-t border-slate-700/50 bg-slate-900/80">
